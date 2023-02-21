@@ -13,44 +13,40 @@ import torchvision.datasets as datasets
 
 import argparse
 
-def test(model, test_loader):
+
+def test(model, test_loader, device):
     model.eval()
     print('Testing started')
     correct = 0
     with torch.no_grad():
-        for data, target in test_loader:
-            data = data.view(data.shape[0], -1)
-            output = model(data)
-            pred = output.argmax(dim=1, keepdim=True)  
-            correct += pred.eq(target.view_as(pred)).sum().item()
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
 
-    print(f'Test set: Accuracy: {correct}/{len(test_loader.dataset)} = {100*(correct/len(test_loader.dataset))}%)')
+    print('Accuracy of the network on the test images: %d %%' % (100 * correct / total))
     print('Testing completed')
     
 
-def train(model, train_loader, criterion, optimizer, epoch):
-    model.train()
+def train(model, train_loader, criterion, optimizer, device):
+    epochs = 40
     print('Training started')
-    for e in range(epoch):
-        running_loss=0
-        correct=0
-        for step, (data, target) in enumerate(train_loader):
-            data = data.view(data.shape[0], -1)
+    for epoch in range(epochs):
+        running_loss = 0.0
+        for i, (inputs, labels) in enumerate(train_loader, 0):
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
-            pred = model(data)
-            loss = criterion(pred, target)
-            running_loss+=loss
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            pred=pred.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
-            dataset_length = len(train_loader.dataset)
-            running_samples = (step + 1) * len(data)
-            proportion = 0.4 # we will use 40% of the dataset
-            if running_samples>(proportion*dataset_length):
-                break
-        print(f"Epoch {e}: Loss {running_loss/len(train_loader.dataset)}, Accuracy {100*(correct/len(train_loader.dataset))}%")
-        print('Training Completed')
+            running_loss += loss.item()
+            if i % 100 == 99:
+                print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 100))
+                running_loss = 0.0
+    print('Training Completed')
     
 def net():
     model = models.resnet50(pretrained=True)
@@ -68,13 +64,8 @@ def net():
     return model
 
 def create_data_loaders(data, batch_size):
-    '''
-    This is an optional function that you may or may not need to implement
-    depending on whether you need to use data loaders or not
-    '''
-    pass
-
-def main(args):
+    train_path = os.path.join(data, 'train') 
+    test_path = os.path.join(data, 'test')
     # The images are not of the same size.
     # Transform all the training images to have the same size.
     train_transform = transforms.Compose([
@@ -101,11 +92,11 @@ def main(args):
     ])
     # Load training and test data
     train_dataset = datasets.ImageFolder(
-        root=args.train_path,
+        root=train_path,
         transform=train_transform
     )
     test_dataset = datasets.ImageFolder(
-        root=args.test_path,
+        root=test_path,
         transform=test_transform
     )
     train_loader = DataLoader(
@@ -116,7 +107,9 @@ def main(args):
         test_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=2, pin_memory=True
     )
+    return train_loader, test_loader
 
+def main(args):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Running on Device {device}")
 
@@ -127,13 +120,15 @@ def main(args):
     #Create loss function and optimizer
     loss_criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
+    
+    train_loader, test_loader = create_data_loaders(args.data_path, args.batch_size)
 
     #Call the train function to start training your model    
-    model=train(model, train_loader, loss_criterion, optimizer, args.num_epoch)
+    model=train(model, train_loader, loss_criterion, optimizer, device)
     print(model)
 
     #Test the model to see its accuracy
-    test(model, test_loader, loss_criterion)
+    test(model, test_loader, device)
 
     #Save the trained model
     torch.save(model.state_dict(), os.path.join(args.model_dir, "model.pth"))
@@ -149,8 +144,7 @@ if __name__=='__main__':
     # Data, model, and output directories. Passed by sagemaker with default to os env variables
     #parser.add_argument('-o','--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
     parser.add_argument('-m','--model_dir', type=str, default=os.environ['SM_MODEL_DIR'])
-    parser.add_argument('-tr','--train_path', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-    parser.add_argument('-te','--test_path', type=str, default=os.environ['SM_CHANNEL_TEST'])
+    parser.add_argument('-tr','--data_path', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
     args=parser.parse_args()
     print(args)
     
