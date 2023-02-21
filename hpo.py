@@ -139,7 +139,6 @@ if __name__=='__main__':
     #Specify all the hyperparameters you need to use to train your model.
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--num_epoch', type=int, default=10)
 
     # Data, model, and output directories. Passed by sagemaker with default to os env variables
     #parser.add_argument('-o','--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
