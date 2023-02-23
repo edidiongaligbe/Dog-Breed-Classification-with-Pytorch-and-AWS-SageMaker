@@ -11,78 +11,60 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
+
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import argparse
 
 
-def test(model, test_loader, criterion, device):
+
+
+def test(model, test_loader, device):
     model.eval()
     print('Testing started')
 
-    running_corrects = 0
-    running_loss = 0
-    for inputs, labels in test_loader:
-        inputs = inputs.to(device)
-        labels = labels.to(device)
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        _, preds = torch.max(outputs, 1)
-        running_loss += loss.item() * inputs.size(0)  # calculate running loss
-        running_corrects += torch.sum(preds == labels.data)  # calculate running corrects
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
 
-    total_loss = running_loss // len(test_loader)
-    total_acc = running_corrects.double() // len(test_loader)
-
-    print("\nTest set: Average loss: {:.4f}, Accuracy: {}\n".format(total_loss, total_acc))
-    print('Testing completed')
+    print('Accuracy of the network on the test images: %d %%' % (100 * correct / total))
 
 
-def train(model, train_loader, validation_loader, criterion, optimizer, device):
+def train(model, train_loader, loss_fn, optimizer, device):
     epochs = 40
-    loss_counter = 0
-    best_loss = 1e6
-    image_dataset = {'train': train_loader, 'valid': validation_loader}
-
+    model.train()
+    
     for epoch in range(epochs):
-        print('Training and validation started')
-        for phase in ['train', 'valid']:
-            if phase == 'train':
-                model.train()
-            else:
-                model.eval()
-            running_loss = 0.0
-            running_corrects = 0
+        print('Training Started')
+        print('Length of data: ', len(train_loader.dataset))
+        running_loss = 0.0
+        
+        for i, (inputs, labels) in enumerate(train_loader):
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = loss_fn(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+            
+            if i % 100 == 99:
+                print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 100))
+                running_loss = 0.0
 
-            for inputs, labels in image_dataset[phase]:
-                inputs = inputs.to(device)
-                labels = labels.to(device)
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+            #dataset_len = len(train_loader.dataset)
+            #running_samples = (i + 1) * len(inputs)
+            #proportion = 0.2
+            #if running_samples > (proportion * dataset_len):
+            #    break
 
-                if phase == 'train':
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-
-                _, preds = torch.max(outputs, 1)
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
-
-            epoch_loss = running_loss // len(image_dataset[phase])
-            epoch_acc = running_corrects // len(image_dataset[phase])
-
-            if phase == 'valid':
-                if epoch_loss < best_loss:
-                    best_loss = epoch_loss
-                else:
-                    loss_counter += 1
-
-            print('{} loss: {:.4f}, acc: {:.4f}, best loss: {:.4f}'.format(phase, epoch_acc, best_loss))
-
-        if loss_counter == 1:
-            break
-        if epoch == 0:
-            break
-    print('Training and Validation Completed')
+    print('Training Completed')
     return model
 
 
@@ -92,28 +74,22 @@ def net():
     for param in model.parameters():
         param.requires_grad = False
 
-        # Add a fully connected layer at the end of the pretrained model.
+    # Add a fully connected layer at the end of the pretrained model.
     # Number of output class is 133, to match the number of labels in our dog breed dataset
     num_features = model.fc.in_features
-    model.fc = nn.Sequential(
-        nn.Dropout(p=0.2, inplace=True),
-        nn.Linear(num_features, 133),
-        nn.LogSoftmax(dim=1))
+    model.fc = nn.Linear(num_features, 133)
     return model
 
 
 def create_data_loaders(data, batch_size):
     train_path = os.path.join(data, 'train')
     test_path = os.path.join(data, 'test')
-    validation_path = os.path.join(data, 'valid')
+    #validation_path = os.path.join(data, 'valid')
     # The images are not of the same size.
     # Transform all the training images to have the same size.
     train_transform = transforms.Compose([
         transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.5),
-        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
-        transforms.RandomRotation(degrees=(30, 70)),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(
             mean=[0.485, 0.456, 0.406],
@@ -137,10 +113,7 @@ def create_data_loaders(data, batch_size):
     test_dataset = datasets.ImageFolder(root=test_path, transform=test_transform)
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
-    validation_dataset = datasets.ImageFolder(root=validation_path, transform=test_transform)
-    validation_loader = DataLoader(validation_dataset, batch_size=batch_size)
-
-    return train_loader, test_loader, validation_loader
+    return train_loader, test_loader 
 
 
 def main(args):
@@ -152,17 +125,17 @@ def main(args):
     model = model.to(device)
 
     # Create loss function and optimizer
-    loss_criterion = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
-    train_loader, test_loader, validation_loader = create_data_loaders(args.data_path, args.batch_size)
+    train_loader, test_loader = create_data_loaders(args.data_path, args.batch_size)
 
     # Call the train function to start training your model    
-    model = train(model, train_loader, validation_loader, loss_criterion, optimizer, device)
+    model = train(model, train_loader, loss_fn, optimizer, device)
     print(model)
 
     # Test the model to see its accuracy
-    test(model, test_loader, loss_criterion, device)
+    test(model, test_loader, device)
 
     # Save the trained model
     torch.save(model.state_dict(), os.path.join(args.model_dir, "model.pth"))
