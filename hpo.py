@@ -11,13 +11,9 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import argparse
-
-
-
 
 def test(model, test_loader, criterion, device):
     model.eval()
