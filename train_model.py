@@ -189,7 +189,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=64)
 
     # Data, model, and output directories. Passed by sagemaker with default to os env variables
-    # parser.add_argument('-o','--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('-o','--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
     parser.add_argument('-m', '--model_dir', type=str, default=os.environ['SM_MODEL_DIR'])
     parser.add_argument('-tr', '--data_path', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
     args = parser.parse_args()
