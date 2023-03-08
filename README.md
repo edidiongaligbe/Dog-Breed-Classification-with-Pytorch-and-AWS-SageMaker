@@ -24,7 +24,9 @@ The hyperparameters used are:
 
 Remember that your README should:
 - Include a screenshot of completed training jobs
+![Training_jobs.png](https://github.com/edidiongaligbe/Dog-Breed-Classification-with-Pytorch-and-AWS-SageMaker/blob/main/Training_jobs.PNG)
 - Logs metrics during the training process
+  Included in the train_and_deploy.ipynb file
 - Tune at least two hyperparameters
   Batch size and Learning rate
 - Retrieve the best best hyperparameters from all your training jobs
@@ -57,6 +59,7 @@ response=predictor.predict(payload, initial_args={"ContentType": "image/jpeg"})
 response
 
 **TODO** Remember to provide a screenshot of the deployed active endpoint in Sagemaker.
+![endpoint](https://github.com/edidiongaligbe/Dog-Breed-Classification-with-Pytorch-and-AWS-SageMaker/blob/main/Endpoint.PNG)
 
 ## Standout Suggestions
 **TODO (Optional):** This is where you can provide information about any standout suggestions that you have attempted.
