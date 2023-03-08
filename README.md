@@ -48,6 +48,7 @@ Installed smdebug, set ip debugger configurations, rules and profiler configurat
 
 ## Model Deployment
 **TODO**: Give an overview of the deployed model and instructions on how to query the endpoint with a sample input.
+```
 import io
 from PIL import Image
 with open(filename, "rb") as f:
@@ -57,6 +58,7 @@ type(payload)
 #Run inference and output result
 response=predictor.predict(payload, initial_args={"ContentType": "image/jpeg"})
 response
+```
 
 **TODO** Remember to provide a screenshot of the deployed active endpoint in Sagemaker.
 ![endpoint](https://github.com/edidiongaligbe/Dog-Breed-Classification-with-Pytorch-and-AWS-SageMaker/blob/main/Endpoint.PNG)
