@@ -33,21 +33,16 @@ Remember that your README should:
   Batch size: 32, Learning rate: 0.0036711776122006303
 
 ## Debugging and Profiling
-**TODO**: Give an overview of how you performed model debugging and profiling in Sagemaker
 Installed smdebug, set ip debugger configurations, rules and profiler configurations. Set up the estimator with the configurations and initiated a training job.
 
 ### Results
-**TODO**: What are the results/insights did you get by profiling/debugging your model?
 1. The batch size is too small.
 2. GPUs are underutilized.
 3. Initialization takes too long.
 
-**TODO** Remember to provide the profiler html/pdf file in your submission.
-- Included.
-
 
 ## Model Deployment
-**TODO**: Give an overview of the deployed model and instructions on how to query the endpoint with a sample input.
+An example on how to query the model endpoint.
 ```
 import io
 from PIL import Image
@@ -60,8 +55,7 @@ response=predictor.predict(payload, initial_args={"ContentType": "image/jpeg"})
 response
 ```
 
-**TODO** Remember to provide a screenshot of the deployed active endpoint in Sagemaker.
+
 ![endpoint](https://github.com/edidiongaligbe/Dog-Breed-Classification-with-Pytorch-and-AWS-SageMaker/blob/main/Endpoint.PNG)
 
-## Standout Suggestions
-**TODO (Optional):** This is where you can provide information about any standout suggestions that you have attempted.
+
